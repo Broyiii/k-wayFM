@@ -157,6 +157,8 @@ public:
     int Partition();
     void ShowCells();
     void CaculateCutsize();
+    void WriteHypergraphInfomation();
+    void WriteResult();
 
     int segmentNum = 2;
     double balance_factor = 1.1;

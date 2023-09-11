@@ -1,19 +1,6 @@
-#include <time.h>
 #include <iomanip>
 #include "fm.cpp"
-
-
-#define TIME_START              \
-    clock_t ____start, ____end; \
-    ____start = clock()
-#define TIME_OUT                \
-    ____end = clock();          \
-
-
-#define GET_DATE                \
-    time_t today = time(0);     \
-    char tmp[21];               \
-    strftime(tmp, sizeof(tmp), "%Y-%m-%d %H:%M:%S",localtime(&today)); 
+#include "writeInfo.cpp"
 
 
 void GenerateInput(int CellNum = 50, int NetNum = 20, int maxCellNumInNet = 10, std::string fileName = "inputInfo")
@@ -80,17 +67,11 @@ void WrongUsage()
 }
 
 
+
+
+
 int main(int argc, char* argv[])
 {
-    GET_DATE;
-    printf("+========================================================================+\n");
-    printf("|                                                                        |\n");
-    printf("|                      K-way FM Hypergraph Partition                     |\n");
-    printf("|                                                                        |\n");
-    printf("|                           Author : @Broyi                              |\n");
-    printf("|                           Version: 2023-09-10                          |\n");
-    printf("|                           Date   : %s                 |\n",tmp);
-    printf("+========================================================================+\n\n");
 
     if ((argc == 1) || (argc % 2 == 0))
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          {
@@ -137,42 +118,9 @@ int main(int argc, char* argv[])
     //GenerateInput(500, 500, 5);  // CellNum. NetNum, MaxCellNumInOneNet
     
     fm* fmExample = new fm(segmentNum, fileName, partFile, balance_factor);
-    fprintf(fmExample->outputFile, "+========================================================================+\n");
-    fprintf(fmExample->outputFile, "|                                                                        |\n");
-    fprintf(fmExample->outputFile, "|                      K-way FM Hypergraph Partition                     |\n");
-    fprintf(fmExample->outputFile, "|                                                                        |\n");
-    fprintf(fmExample->outputFile, "|                           Author : @Broyi                              |\n");
-    fprintf(fmExample->outputFile, "|                           Version: 2023-09-10                          |\n");
-    fprintf(fmExample->outputFile, "|                           Date   : %s                 |\n",tmp);
-    fprintf(fmExample->outputFile, "+========================================================================+\n\n");
 
-    printf("**************************************************************************\n");
-    printf("*                          Partitioning Context                          *\n");
-    printf("**************************************************************************\n");
-    printf("Partition Parameters:\n");
-    printf("    - Hypergraph:                       %s\n", fileName.c_str());
-    if (partFile != "NO FILE")
-    {
-        printf("    - Initial Partition:                %s\n", partFile.c_str());
-    }
-    printf("    - Segment Number:                   %0d\n", segmentNum);
-    printf("    - Imbalance Parameter Epsilon:      %.2f\n", balance_factor);
-    printf("--------------------------------------------------------------------------\n");
-
-    fprintf(fmExample->outputFile, "**************************************************************************\n");
-    fprintf(fmExample->outputFile, "*                          Partitioning Context                          *\n");
-    fprintf(fmExample->outputFile, "**************************************************************************\n");
-    fprintf(fmExample->outputFile, "Partition Parameters:\n");
-    fprintf(fmExample->outputFile, "    - Hypergraph:                       %s\n", fileName.c_str());
-    if (partFile != "NO FILE")
-    {
-        fprintf(fmExample->outputFile, "    - Initial Partition:                %s\n", partFile.c_str());
-    }
-    fprintf(fmExample->outputFile, "    - Segment Number:                   %0d\n", segmentNum);
-    fprintf(fmExample->outputFile, "    - Imbalance Parameter Epsilon:      %.2f\n", balance_factor);
-    fprintf(fmExample->outputFile, "--------------------------------------------------------------------------\n");
-    
-
+    WriteHead(fmExample);
+    WritePartitionParameters(fmExample, segmentNum, balance_factor, partFile, fileName);
 
     int itTime = fmExample->Partition();
 

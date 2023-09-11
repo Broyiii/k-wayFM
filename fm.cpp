@@ -574,39 +574,8 @@ int fm::Partition()
     
     CaculateCutsize();
     this->originalCutSize = this->cutSize;
-
-    int totalCellWeight = 0;
-    for (int i = 0; i < this->segmentNum; i++)
-    {
-        totalCellWeight += this->Segments[i];
-    }
-
-    printf("Hypergraph Infomation:\n");
-    printf("    - Total Net Number:                 %0d\n", this->NetNum);
-    printf("    - Total Cell Number:                %0d\n", this->CellNum);
-    printf("    - Total Cell Weight:                %0d\n", totalCellWeight);
-    printf("    - Max Segment Weight:               %0d\n", this->maxCellNum);
-    printf("    - Initial Cut-size:                 %0d\n", this->cutSize);
-    printf("--------------------------------------------------------------------------\n\n");
-    printf("**************************************************************************\n");
-    printf("*                          Partitioning Result                           *\n");
-    printf("**************************************************************************\n");
-    printf("Current Cut-size:\n");
-    printf("    - Cut-size after pass #%2d: %0d\n", 0, this->cutSize);
-    
-    fprintf(this->outputFile, "Hypergraph Infomation:\n");
-    fprintf(this->outputFile, "    - Total Net Number:                 %0d\n", this->NetNum);
-    fprintf(this->outputFile, "    - Total Cell Number:                %0d\n", this->CellNum);
-    fprintf(this->outputFile, "    - Total Cell Weight:                %0d\n", totalCellWeight);
-    fprintf(this->outputFile, "    - Max Segment Weight:               %0d\n", this->maxCellNum);
-    fprintf(this->outputFile, "    - Initial Cut-size:                 %0d\n", this->cutSize);
-    fprintf(this->outputFile, "--------------------------------------------------------------------------\n\n");
-    fprintf(this->outputFile, "**************************************************************************\n");
-    fprintf(this->outputFile, "*                          Partitioning Result                           *\n");
-    fprintf(this->outputFile, "**************************************************************************\n");
-    fprintf(this->outputFile, "Current Cut-size:\n");
-    fprintf(this->outputFile, "    - Cut-size after pass #%2d: %0d\n", 0, this->cutSize);
-
+ 
+    WriteHypergraphInfomation();
 
     int i = 0;
     int cnt = 0;
@@ -628,31 +597,7 @@ int fm::Partition()
         }
     }
 
-    printf("--------------------------------------------------------------------------\n");
-    printf("Partition Weights:\n");
-    for (int seg = 0; seg < this->segmentNum; seg++)
-    {
-        printf("    |part %4d | = %6d\t| Resource Utilization = %.2f %%\n", seg, this->Segments[seg], (double)this->Segments[seg] * 100 / this->maxCellNum);
-    }
-    printf("--------------------------------------------------------------------------\n");
-    printf("Result:\n");
-    printf("    - Initial Cut-size           = %0d\n", this->originalCutSize);
-    printf("    - Final Cut-size (Gain Sum)  = %0d\n", this->cutSize);
-
-    fprintf(this->outputFile, "--------------------------------------------------------------------------\n");
-    fprintf(this->outputFile, "Partition Weights:\n");
-    for (int seg = 0; seg < this->segmentNum; seg++)
-    {
-        fprintf(this->outputFile, "    |part %4d | = %6d\t| Resource Utilization = %.2f %%\n", seg, this->Segments[seg], (double)this->Segments[seg] * 100 / this->maxCellNum);
-    }
-    fprintf(this->outputFile, "--------------------------------------------------------------------------\n");
-    fprintf(this->outputFile, "Result:\n");
-    fprintf(this->outputFile, "    - Initial Cut-size           = %0d\n", this->originalCutSize);
-    fprintf(this->outputFile, "    - Final Cut-size (Gain Sum)  = %0d\n", this->cutSize);
-
-    CaculateCutsize();
-    printf("    - Final Cut-size (Calculate) = %0d\n", this->cutSize);
-    fprintf(this->outputFile, "    - Final Cut-size (Calculate) = %0d\n", this->cutSize);
+    WriteResult();
 
     return i;
 }
