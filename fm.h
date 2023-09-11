@@ -84,27 +84,19 @@ struct Net
 {
     const int ID;
     const int weight;
-    int status;  // 0->free, 1->loose, 2->locked
     int segmentNum = 2;
 
-    int* phi;     // num of free cells in seg k
-    int* lambda;  // num of lock cells in seg k
-    int* beta;    // if cells in seg k ALL FREE, beta = phi, else, beta = max
-    int* betaAp;  // num of free cells except seg k, sigma_k != j(beta[j])
+    int* phi;     // num of cells in seg k
     
     std::vector< int > cells;
 
     Net(int id, int w, int sn) : ID(id), weight(w), segmentNum(sn) {
-        phi = new int[segmentNum];
-        lambda = new int[segmentNum];
-        beta = new int[segmentNum];
-        betaAp = new int[segmentNum];
+        this->phi = new int[segmentNum];
+        for (int seg = 0; seg < segmentNum; seg++)
+            this->phi[seg] = 0;
     }
     ~Net() {
         delete[] phi;
-        delete[] lambda;
-        delete[] beta;
-        delete[] betaAp;
     }
 };
 
@@ -127,7 +119,9 @@ class fm
 public:
     fm(int segmentNum, std::string fileDir, std::string partDir, double bal_fac) {
         this->segmentNum = segmentNum;
-        Segments = new int[segmentNum];
+        this->Segments = new int[segmentNum];
+        for (int seg = 0; seg < segmentNum; seg++)
+            this->Segments[seg] = 0;
 
         this->inputFileDir = fileDir;
         this->inputPartFile = partDir;
@@ -186,8 +180,6 @@ private:
     void DoPass();
     bool SatisfyBalance(int targetSeg, int weight);
     void GetBalanceNum();
-    void CalculateSingleBetaApostrophe(Net* net);
-    void CalculateBetaApostrophe();  // caculate beta'
     void UpdateGain(int cell, int k, Net* net);
     void ReverseUpdateGain(int cell, int k, Net* net);
     void GetGainOrder();
