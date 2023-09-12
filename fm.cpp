@@ -194,13 +194,17 @@ bool fm::GetPartInfo()
             }
             this->Segments[cellSeg] += Cells[cellIndex]->weight;
 
-            for (int& netID : Cells[cellIndex]->nets)
-            { 
-                ++Nets[netID]->phi[cellSeg];
-            }
-
             this->Cells[cellIndex++]->segment = cellSeg;
         }
+
+        for (auto cell : Cells)
+        {
+            for (int& netID : cell->nets)
+            { 
+                ++Nets[netID]->phi[cell->segment];
+            }
+        }
+
         inputFile.close();
         return true;
     }
@@ -341,28 +345,11 @@ void fm::InitPartition()
     Order.clear();
     Gains.clear();
 
-
-    // for (auto net : Nets)
-    // {
-    //     for (int i = 0; i < segmentNum; i++)
-    //     {
-    //         net->phi[i] = 0;
-    //     }
-    // }
-
-
-
     for (auto cell : Cells)
     {
         cell->status = FREE;
         for (int i = 0; i < segmentNum; i++)
             cell->gain[i] = 0;
-        
-        // int k = cell->segment;
-        // for (int& netID : cell->nets)
-        // { 
-        //     ++Nets[netID]->phi[k];
-        // }
     }
 
     for (auto net : Nets)
