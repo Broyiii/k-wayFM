@@ -4,33 +4,33 @@ import sys
 
 def test0():
     for i in range(9):
-        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm0{i+1}.hgr -e 1.1')
+        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm0{i+1}.hgr -e 0.1')
     for i in range(9,18):
-        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm{i+1}.hgr -e 1.1')
+        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm{i+1}.hgr -e 0.1')
 
 
 def test1():
     segments: list[int] = [2,2,5,5,5,5,8,8,8,8,13,13,13,13,64,64,128,128]
     for i in range(9):
-        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm0{i+1}.hgr -p ./input/ibm18/{i+1}.txt -k {segments[i]} -e 1.1')
+        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm0{i+1}.hgr -p ./input/ibm18/{i+1}.txt -k {segments[i]} -e 0.1')
     for i in range(9,18):
-        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm{i+1}.hgr -p ./input/ibm18/{i+1}.txt -k {segments[i]} -e 1.1')
+        os.system(f'./kwayFM -h ./work/ISPD_benchmark/ibm{i+1}.hgr -p ./input/ibm18/{i+1}.txt -k {segments[i]} -e 0.1')
 
 
 def test2():
     segments: list[int] = [2,2,2,5,5,5,5,9,13,13,13,13,13,16,10,16,32,64]
     for i in range(9):
-        os.system(f'./kwayFM -h ./work/IBM_weight/ibm0{i+1}.weight.hgr -p ./input/IBM18_weight_0.2/IBM0{i+1}.txt -k {segments[i]} -e 1.2')
+        os.system(f'./kwayFM -h ./work/IBM_weight/ibm0{i+1}.weight.hgr -p ./input/IBM18_weight_0.2/IBM0{i+1}.txt -k {segments[i]} -e 0.2')
     for i in range(9,18):
-        os.system(f'./kwayFM -h ./work/IBM_weight/ibm{i+1}.weight.hgr -p ./input/IBM18_weight_0.2/IBM{i+1}.txt -k {segments[i]} -e 1.2')
+        os.system(f'./kwayFM -h ./work/IBM_weight/ibm{i+1}.weight.hgr -p ./input/IBM18_weight_0.2/IBM{i+1}.txt -k {segments[i]} -e 0.2')
 
 
 def test3():
     segments: list[int] = [2,2,2,5,5,5,5,9,13,13,13,13,13,16,10,16,32,64]
     for i in range(9):
-        os.system(f'./kwayFM -h ./work/IBM_weight/ibm0{i+1}.weight.hgr -p ./input/IBM18_weight_0.02/IBM0{i+1}.txt -k {segments[i]} -e 1.02')
+        os.system(f'./kwayFM -h ./work/IBM_weight/ibm0{i+1}.weight.hgr -p ./input/IBM18_weight_0.02/IBM0{i+1}.txt -k {segments[i]} -e 0.02')
     for i in range(9,18):
-        os.system(f'./kwayFM -h ./work/IBM_weight/ibm{i+1}.weight.hgr -p ./input/IBM18_weight_0.02/IBM{i+1}.txt -k {segments[i]} -e 1.02')
+        os.system(f'./kwayFM -h ./work/IBM_weight/ibm{i+1}.weight.hgr -p ./input/IBM18_weight_0.02/IBM{i+1}.txt -k {segments[i]} -e 0.02')
 
 
 if __name__ == '__main__':

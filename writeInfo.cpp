@@ -135,4 +135,69 @@ void fm::WriteResult()
     fprintf(this->outputFile, "    - Final Cut-size (Calculate) = %0d\n", this->cutSize);
 }
 
+
+void GenerateInput(int CellNum = 50, int NetNum = 20, int maxCellNumInNet = 10, std::string fileName = "inputInfo")
+{
+    fileName = "./work/demo/test.hgr";
+    std::ofstream ofs;
+    ofs.open(fileName, std::ios::out);
+
+    //srand((unsigned int)time(NULL));
+    ofs << CellNum << " " << NetNum << std::endl;
+
+    /*
+    for (int i = 0; i < CellNum; ++i)
+    {
+        ofs << rand() % 10 + 1 << std::endl;
+    }
+    */
+
+    for (int i = 0; i < NetNum; ++i)
+    {
+        //int hasID[CellNum] = { 0 };
+        int* hasID = new int[CellNum];
+        for (int ii = 0; ii < CellNum; ii++)
+            hasID[ii] = 0;
+        //int n = rand() % (CellNum - 1) + 1;
+        int n = rand() % ((maxCellNumInNet > NetNum) ? NetNum - 1 : maxCellNumInNet) + 1;
+        int source = rand() % CellNum;
+        hasID[source] = 1;
+        //ofs << rand() % 10 + 1 << " " << source << " ";
+        ofs << source + 1 << " ";
+        for (int j = 0; j < n; ++j)
+        {
+            int target = rand() % CellNum;
+            while (1)
+            {
+                if (hasID[target] == 0)
+                {
+                    ofs << target + 1 << " ";
+                    hasID[target] = 1;
+                    break;
+                }
+                else
+                    target = rand() % CellNum;
+            }
+        }
+        ofs << std::endl;
+    }
+
+    ofs.close();
+}
+
+
+void WrongUsage()
+{
+    std::cerr << "Usage:\n"
+              << "\t./kwayFM [-command] <parameter>\n"
+              << "\nRequired commands:\n"
+              << "\t-h <hgr_file_directory>             | input a hgr file\n"
+              << "\nOptional commands:\n"
+              << "\t-k <segment_num>                    | input a segment number   , defalut is 2\n"
+              << "\t-e <balance_factor>                 | input a balance factor   , defalut is 0.1\n"
+              << "\t-p <partition_file_directory>       | input a partition result , defalut is random\n"
+              << std::endl;
+}
+
+
 #endif
