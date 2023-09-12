@@ -381,13 +381,24 @@ void fm::MakeMove(int cellID, int targetSeg)
         // before move
         for (int& cell : Nets[netID]->cells)
         {
-            if ((Cells[cell]->status == FREE))
+            if ((Cells[cell]->status == FREE) && (cell != cellID))
             {
                 Gain cell_gain = Cells[cell]->GetGain();   
                 
                 for (int i = 0; i < segmentNum; i++)
                     ReverseUpdateGain(cell, i, Nets[netID]);
-                
+
+                // ----
+                --Nets[netID]->phi[sourceSeg];
+                ++Nets[netID]->phi[targetSeg];
+            
+                for (int i = 0; i < segmentNum; i++)
+                    UpdateGain(cell, i, Nets[netID]);
+
+                ++Nets[netID]->phi[sourceSeg];
+                --Nets[netID]->phi[targetSeg];
+                // ----
+
                 Gain cell_gain_new = Cells[cell]->GetGain();
 
                 if (cell_gain != cell_gain_new)
@@ -396,7 +407,6 @@ void fm::MakeMove(int cellID, int targetSeg)
                     auto iter = Gains.find(cell_gain.cellGain);
                     if (iter != Gains.end())
                     {
-                        // 添加size()的判断并未有变快
                         if (Gains[cell_gain.cellGain].size() > 1)
                             Gains[cell_gain.cellGain].erase(cell_gain);
                         else
@@ -427,53 +437,6 @@ void fm::MakeMove(int cellID, int targetSeg)
 
         --Nets[netID]->phi[sourceSeg];
         ++Nets[netID]->phi[targetSeg];
-
-        for (int& cell : Nets[netID]->cells)
-        {
-            if ((Cells[cell]->status == FREE) && (cell != cellID))
-            {
-                Gain cell_gain = Cells[cell]->GetGain();
-
-                for (int i = 0; i < segmentNum; i++)
-                    UpdateGain(cell, i, Nets[netID]);
-
-                Gain cell_gain_new = Cells[cell]->GetGain();
-
-                if (cell_gain != cell_gain_new)
-                {
-                    // delete the old gain ----------------------------------------------
-                    auto iter = Gains.find(cell_gain.cellGain);
-                    if (iter != Gains.end())
-                    {
-                        // 添加size()的判断并未有变快
-                        if (Gains[cell_gain.cellGain].size() > 1)
-                            Gains[cell_gain.cellGain].erase(cell_gain);
-                        else
-                            Gains.erase(cell_gain.cellGain);
-                    }
-                    else
-                    {
-                        printf("ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
-                        fprintf(this->outputFile, "ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
-                    }
-                    // ------------------------------------------------------------------
-                    // insert the new gain ----------------------------------------------
-                    iter = Gains.find(cell_gain_new.cellGain);
-                    if (iter != Gains.end()) 
-                    {
-                        iter->second.insert(cell_gain_new);      
-                    }
-                    else  // insert value
-                    {
-                        std::set<Gain,gainSortCriterion> sg;
-                        sg.insert(cell_gain_new);
-                        Gains.insert(std::pair<int,std::set<Gain,gainSortCriterion>>(cell_gain_new.cellGain, sg));
-                    }
-                    // ------------------------------------------------------------------
-                }   
-            }
-        }
-
     }
 }
 
