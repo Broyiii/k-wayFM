@@ -250,7 +250,7 @@ void fm::ShowCells()
 }
 
 
-void fm::UpdateGain(int cell, int k, Net* net)
+void fm::UpdateGain(int cellID, Net* net)
 {
     /* 
     cell : cell ID   , [0, cellNum-1]
@@ -258,31 +258,55 @@ void fm::UpdateGain(int cell, int k, Net* net)
     net  : net       , [Nets[0], Nets[netNum-1]]
     ith  : gain level, [1, max gain level]
     */
-    int j = Cells[cell]->segment;
-    if (j != k)
+    Cell *cell = Cells[cellID];
+    int j = cell->segment;
+
+    if (net->phi[j] == 1)
     {
-        if ((net->phi[k] == (this->ith - 1)) && (net->phi[j] > 1))  // no cell on seg k, so gain should decrease
+        for (int h = 0; h < segmentNum; ++h)
         {
-            Cells[cell]->gain[k] -= net->weight;
-        }
-    }
-    else
-    {
-        if (net->phi[j] == this->ith)  // only one cell on seg j, so gain should increase
-        {
-            for (int h = 0; h < segmentNum; h++)
+            if ((h != j) && (net->phi[h] > 0))
             {
-                if ((h != j) && (net->phi[h] > 0))
-                {
-                    Cells[cell]->gain[h] += net->weight;
-                }
+                cell->gain[h] += net->weight;
             }
         }
     }
+    else
+    {
+        for (int h = 0; h < segmentNum; ++h)
+        {
+            if ((h != j) && (net->phi[h] == 0))
+            {
+                cell->gain[h] -= net->weight;
+            }
+        }
+    }
+
+    // int j = Cells[cell]->segment;
+    // if (j != k)
+    // {
+    //     if ((net->phi[k] == (this->ith - 1)) && (net->phi[j] > 1))  // no cell on seg k, so gain should decrease
+    //     {
+    //         Cells[cell]->gain[k] -= net->weight;
+    //     }
+    // }
+    // else
+    // {
+    //     if (net->phi[j] == this->ith)  // only one cell on seg j, so gain should increase
+    //     {
+    //         for (int h = 0; h < segmentNum; h++)
+    //         {
+    //             if ((h != j) && (net->phi[h] > 0))
+    //             {
+    //                 Cells[cell]->gain[h] += net->weight;
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 
-void fm::ReverseUpdateGain(int cell, int k, Net* net)
+void fm::ReverseUpdateGain(int cellID, Net* net)
 {
     /* 
     cell : cell ID   , [0, cellNum-1]
@@ -290,24 +314,26 @@ void fm::ReverseUpdateGain(int cell, int k, Net* net)
     net  : net       , [Nets[0], Nets[netNum-1]]
     ith  : gain level, [1, max gain level]
     */
-    int j = Cells[cell]->segment;
-    if (j != k)
+    Cell *cell = Cells[cellID];
+    int j = cell->segment;
+
+    if (net->phi[j] == 1)
     {
-        if ((net->phi[k] == (this->ith - 1)) && (net->phi[j] > 1))
+        for (int h = 0; h < segmentNum; ++h)
         {
-            Cells[cell]->gain[k] += net->weight;
+            if ((h != j) && (net->phi[h] > 0))
+            {
+                cell->gain[h] -= net->weight;
+            }
         }
     }
     else
     {
-        if (net->phi[j] == this->ith)
+        for (int h = 0; h < segmentNum; ++h)
         {
-            for (int h = 0; h < segmentNum; h++)
+            if ((h != j) && (net->phi[h] == 0))
             {
-                if ((h != j) && (net->phi[h] > 0))
-                {
-                    Cells[cell]->gain[h] -= net->weight;
-                }
+                cell->gain[h] += net->weight;
             }
         }
     }
@@ -340,10 +366,29 @@ void fm::GetGainOrder()
 }
 
 
+void fm::InitGainBucket()
+{
+    this->GainBucket->Init();
+    for (auto& cell : Cells)
+    {
+        int sourceSeg = cell->segment;
+        for (int k = 0; k < segmentNum; ++k)
+        {
+            if (k != sourceSeg)
+            {
+                // Gain* element = new Gain(cell->ID, sourceSeg, k, cell->gain[k]);
+                this->GainBucket->Insert(new Gain(cell->ID, sourceSeg, k, cell->gain[k]));
+            }
+        }
+    }
+}
+
+
 void fm::InitPartition()
 {
     Order.clear();
     Gains.clear();
+    // GainBucket->Init();
 
     for (auto cell : Cells)
     {
@@ -354,17 +399,74 @@ void fm::InitPartition()
 
     for (auto net : Nets)
     {
-        for (int k = 0; k < segmentNum; k++)
+        // net->cells4MoveInParts.clear();
+        // net->cells4MoveInParts.resize(segmentNum);
+        // for (int& cellID : net->cells)
+        // {
+        //     net->cells4MoveInParts[Cells[cellID]->segment].emplace_back(cellID);
+        // }
+        net->isLocked = false;
+        for (int k = 0; k < segmentNum; ++k)
         {
-            for (int& cellID : net->cells)
+            net->isLockedPart[k] = false;
+            for (int j = 0; j < segmentNum; ++j)
+                net->gain[k][j] = 0;
+        }
+        net->UpdateNetGain();
+        // for (int& cellID : net->cells)
+        // {
+        //     UpdateGain(cellID, net);
+        // }
+    }
+    for (auto cell : Cells)
+    {
+        int k = cell->segment;
+        for (int netID : cell->nets)
+        {
+            for (int j = 0; j < segmentNum; ++j)
             {
-                UpdateGain(cellID, k, net);
+                if (k != j)
+                {
+                    cell->gain[j] += Nets[netID]->gain[k][j];
+                }
             }
         }
     }
-    GetGainOrder();
+    if (dataStruct == 0)
+        GetGainOrder();
+    else
+        InitGainBucket();
 }
 
+void fm::InsertNewGain(Gain &old_gain, Gain &new_gain, int cell)
+{
+    auto iter = Gains.find(old_gain.cellGain);
+    if (iter != Gains.end())
+    {
+        if (Gains[old_gain.cellGain].size() > 1)
+            Gains[old_gain.cellGain].erase(old_gain);
+        else
+            Gains.erase(old_gain.cellGain);
+    }
+    else
+    {
+        printf("ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
+        fprintf(this->outputFile, "ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
+    }
+    // ------------------------------------------------------------------
+    // insert the new gain ----------------------------------------------
+    iter = Gains.find(new_gain.cellGain);
+    if (iter != Gains.end()) 
+    {
+        iter->second.insert(new_gain);      
+    }
+    else  // insert value
+    {
+        std::set<Gain,gainSortCriterion> sg;
+        sg.insert(new_gain);
+        Gains.insert(std::pair<int,std::set<Gain,gainSortCriterion>>(new_gain.cellGain, sg));
+    }
+}
 
 void fm::MakeMove(int cellID, int targetSeg)
 {
@@ -377,91 +479,269 @@ void fm::MakeMove(int cellID, int targetSeg)
 
     for (int& netID : Cells[cellID]->nets)
     {
-        // update neighbors' gains
-        // before move
-        for (int& cell : Nets[netID]->cells)
+        if (Nets[netID]->isLocked)
         {
-            if ((Cells[cell]->status == FREE) && (cell != cellID))
+            --Nets[netID]->phi[sourceSeg]; 
+            ++Nets[netID]->phi[targetSeg];
+            continue;
+        }
+
+        if ((Nets[netID]->isLockedPart[sourceSeg] == true) && (Nets[netID]->isLockedPart[targetSeg] == true))
+        {
+            --Nets[netID]->phi[sourceSeg]; 
+            ++Nets[netID]->phi[targetSeg];
+            // Nets[netID]->UpdateLock(targetSeg);
+            continue;
+        }
+        Nets[netID]->isLockedPart[targetSeg] = true;
+        if ((Nets[netID]->phi[sourceSeg] >= 3) && (Nets[netID]->phi[targetSeg] >= 2))
+        {
+            --Nets[netID]->phi[sourceSeg]; 
+            ++Nets[netID]->phi[targetSeg];
+            Nets[netID]->UpdateLock(targetSeg);
+            continue;
+        }
+        
+        // update neighbors' gains
+        if (dataStruct == 0)
+        {
+            // map
+            for (int& cell : Nets[netID]->cells)
             {
-                Gain cell_gain = Cells[cell]->GetGain();   
-                
-                for (int i = 0; i < segmentNum; i++)
-                    ReverseUpdateGain(cell, i, Nets[netID]);
-
-                // ----
-                --Nets[netID]->phi[sourceSeg];
-                ++Nets[netID]->phi[targetSeg];
-            
-                for (int i = 0; i < segmentNum; i++)
-                    UpdateGain(cell, i, Nets[netID]);
-
-                ++Nets[netID]->phi[sourceSeg];
-                --Nets[netID]->phi[targetSeg];
-                // ----
-
-                Gain cell_gain_new = Cells[cell]->GetGain();
-
-                if (cell_gain != cell_gain_new)
+                if ((Cells[cell]->status == FREE))
                 {
-                    // delete the old gain ----------------------------------------------
-                    auto iter = Gains.find(cell_gain.cellGain);
-                    if (iter != Gains.end())
+                    Gain cell_gain = Cells[cell]->GetGain();
+                    int cellSeg = Cells[cell]->segment;
+                    // update src seg gains
+                    if (cellSeg == sourceSeg)
                     {
-                        if (Gains[cell_gain.cellGain].size() > 1)
-                            Gains[cell_gain.cellGain].erase(cell_gain);
-                        else
-                            Gains.erase(cell_gain.cellGain);
+                        if (Nets[netID]->phi[targetSeg] == 0)
+                        {
+                            if (Nets[netID]->phi[sourceSeg] == 2)
+                            {
+                                Cells[cell]->gain[targetSeg] += 2;
+                            }
+                            else
+                            {
+                                ++Cells[cell]->gain[targetSeg];
+                            }
+                        }
+                        else if (Nets[netID]->phi[sourceSeg] == 2)
+                        {
+                            ++Cells[cell]->gain[targetSeg];
+                        }
+
+                        if (Nets[netID]->phi[sourceSeg] == 2)
+                        {
+                            for (int k = 0; k < segmentNum; ++k) {
+                                if ((k != cellSeg) && (k != targetSeg))
+                                {
+                                    ++Cells[cell]->gain[k];
+                                }
+                            }
+                        }
                     }
+                    // update tar seg gains
+                    else if (cellSeg == targetSeg)
+                    {
+                        if (Nets[netID]->phi[sourceSeg] == 1)
+                        {
+                            --Cells[cell]->gain[sourceSeg];
+                        }
+                        if (Nets[netID]->phi[targetSeg] == 1)
+                        {
+                            for (int k = 0; k < segmentNum; ++k) {
+                                if (k != cellSeg) 
+                                {
+                                    --Cells[cell]->gain[k];
+                                }
+                            }
+                        }
+                    }
+                    // update other seg gains
                     else
                     {
-                        printf("ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
-                        fprintf(this->outputFile, "ERROR! CANNOT EREASE CELL[%0d] GAIN!\n", cell);
+                        if (Nets[netID]->phi[sourceSeg] == 1)
+                        {
+                            --Cells[cell]->gain[sourceSeg];
+                        }
+                        if (Nets[netID]->phi[targetSeg] == 0)
+                        {
+                            ++Cells[cell]->gain[targetSeg];
+                        }
                     }
-                    // ------------------------------------------------------------------
-                    // insert the new gain ----------------------------------------------
-                    iter = Gains.find(cell_gain_new.cellGain);
-                    if (iter != Gains.end()) 
+                    Gain cell_gain_new = Cells[cell]->GetGain();
+                    if (cell_gain != cell_gain_new)
+                        InsertNewGain(cell_gain, cell_gain_new, cell);
+                }
+            }
+        }
+        else
+        {
+            // maxheap
+            for (int& cell : Nets[netID]->cells)
+            {
+                if ((Cells[cell]->status == FREE))
+                {
+                    int cellSeg = Cells[cell]->segment;
+                    // update src seg gains
+                    if (cellSeg == sourceSeg)
                     {
-                        iter->second.insert(cell_gain_new);      
+                        if (Nets[netID]->phi[targetSeg] == 0)
+                        {
+                            if (Nets[netID]->phi[sourceSeg] == 2)
+                            {
+                                GainBucket->ChangePriority(cell, targetSeg, 2);
+                            }
+                            else
+                            {
+                                GainBucket->ChangePriority(cell, targetSeg, 1);
+                            }
+                        }
+                        else if (Nets[netID]->phi[sourceSeg] == 2)
+                        {
+                            GainBucket->ChangePriority(cell, targetSeg, 1);
+                        }
+
+                        if (Nets[netID]->phi[sourceSeg] == 2)
+                        {
+                            for (int k = 0; k < segmentNum; ++k) {
+                                if ((k != cellSeg) && (k != targetSeg))
+                                {
+                                    GainBucket->ChangePriority(cell, k, 1);
+                                }
+                            }
+                        }
                     }
-                    else  // insert value
+                    // update tar seg gains
+                    else if (cellSeg == targetSeg)
                     {
-                        std::set<Gain,gainSortCriterion> sg;
-                        sg.insert(cell_gain_new);
-                        Gains.insert(std::pair<int,std::set<Gain,gainSortCriterion>>(cell_gain_new.cellGain, sg));
+                        if (Nets[netID]->phi[sourceSeg] == 1)
+                        {
+                            GainBucket->ChangePriority(cell, sourceSeg, -1);
+                        }
+                        if (Nets[netID]->phi[targetSeg] == 1)
+                        {
+                            for (int k = 0; k < segmentNum; ++k) {
+                                if (k != cellSeg) 
+                                {
+                                    GainBucket->ChangePriority(cell, k, -1);
+                                }
+                            }
+                        }
                     }
-                    // ------------------------------------------------------------------
-                }                
+                    // update other seg gains
+                    else
+                    {
+                        if (Nets[netID]->phi[sourceSeg] == 1)
+                        {
+                            GainBucket->ChangePriority(cell, sourceSeg, -1);
+                        }
+                        if (Nets[netID]->phi[targetSeg] == 0)
+                        {
+                            GainBucket->ChangePriority(cell, targetSeg, 1);
+                        }
+                    }
+                }
             }
         }
 
-        --Nets[netID]->phi[sourceSeg];
+        --Nets[netID]->phi[sourceSeg]; 
         ++Nets[netID]->phi[targetSeg];
+        Nets[netID]->UpdateLock(targetSeg);
+        continue;
+        
+
+        // // ==============================================================================
+        // for (int& cell : Nets[netID]->cells)
+        // {
+        //     if ((Cells[cell]->status == FREE))
+        //     {
+        //         Gain cell_gain = Cells[cell]->GetGain();   
+                
+    //             ReverseUpdateGain(cell, Nets[netID]);
+
+        //         // ----
+        //         --Nets[netID]->phi[sourceSeg];
+        //         ++Nets[netID]->phi[targetSeg];
+            
+    //             UpdateGain(cell, Nets[netID]);
+
+        //         ++Nets[netID]->phi[sourceSeg];
+        //         --Nets[netID]->phi[targetSeg];
+        //         // ----
+
+        //         Gain cell_gain_new = Cells[cell]->GetGain();
+
+        //         if (cell_gain != cell_gain_new)
+        //         {
+        //            InsertNewGain(cell_gain, cell_gain_new, cell);
+        //         }                
+        //     }
+        // }
+
+        // --Nets[netID]->phi[sourceSeg];
+        // ++Nets[netID]->phi[targetSeg];
     }
 }
 
 
 void fm::DoPass()
 {
-    newMove:
-    if (Gains.size() != 0)
+    if (dataStruct == 0)
     {
-        for (auto g = Gains.begin(); g != Gains.end(); g++)
+        newMove:
+        if (Gains.size() != 0)
         {
-            for (auto sg = g->second.begin(); sg != g->second.end(); sg++)
+            // auto g1 = Gains.begin()->second.begin();
+            // auto g2 = GainBucket->GetMax();
+            // std::cout << "g1: " << g1->cellID << " : " << g1->cellGain << std::endl;
+            // std::cout << "g2: " << g2->cellID << " : " << g2->cellGain << std::endl;
+            // if (g1->cellGain != g2->cellGain)
+            //     std::cout << "xx" << std::endl;
+
+            for (auto g = Gains.begin(); g != Gains.end(); g++)
             {
-                if (SatisfyBalance(sg->targetSegment, Cells[sg->cellID]->weight))
+                for (auto sg = g->second.begin(); sg != g->second.end(); sg++)
                 {
-                    Order.emplace_back(Gain(sg->cellID, sg->sourceSegment, sg->targetSegment, sg->cellGain));
-                    MakeMove(sg->cellID, sg->targetSegment);
+                    if (SatisfyBalance(sg->targetSegment, Cells[sg->cellID]->weight))
+                    {
+                        if (g->second.size() > 1)
+                            g->second.erase(sg);
+                        else
+                            Gains.erase(g);
+                        int moveCell = sg->cellID;
+                        int tarSeg = sg->targetSegment;
+                        Order.emplace_back(Gain(sg->cellID, sg->sourceSegment, sg->targetSegment, sg->cellGain));
+                        // Order.emplace_back(*sg);
 
-                    if (g->second.size() > 1)
-                        g->second.erase(sg);
-                    else
-                        Gains.erase(g);
-
-                    goto newMove;  // break the first loop body, equals double break
+                        MakeMove(moveCell, tarSeg);
+                        
+                        goto newMove;  // break the first loop body, equals double break
+                    }
                 }
+            }
+        }
+    }
+    else
+    {
+        while (GainBucket->size != 0)
+        {
+            auto max_gain_ = GainBucket->ExtractMax();
+            if (SatisfyBalance(max_gain_->targetSegment, Cells[max_gain_->cellID]->weight))
+            {
+                for (int seg = 0; seg < segmentNum; ++seg)
+                {
+                    if ((seg != max_gain_->sourceSegment) && (seg != max_gain_->targetSegment))
+                    {
+                        GainBucket->Remove(max_gain_->cellID, seg);
+                    }
+                }
+
+                // int __cut__ = CaculateCutsize();
+                Order.emplace_back(*max_gain_);
+                // Order.emplace_back(Gain(max_gain_->cellID, max_gain_->sourceSegment, max_gain_->targetSegment, max_gain_->cellGain));
+                MakeMove(max_gain_->cellID, max_gain_->targetSegment);
             }
         }
     }
@@ -512,10 +792,11 @@ void fm::DoPass()
             --Nets[netID]->phi[Order[i].targetSegment];
         }
     }
+    std::cout << "        pass gain = " << maxOrderGain << std::endl;
 }
 
 
-void fm::CaculateCutsize()
+int fm::CaculateCutsize()
 {
     this->cutSize = 0;
     int *hasSegment = new int[this->segmentNum];
@@ -537,6 +818,7 @@ void fm::CaculateCutsize()
         this->cutSize -= net->weight;
     }
     delete[] hasSegment;
+    return this->cutSize;
 }
 
 
@@ -544,6 +826,7 @@ int fm::Partition()
 {
     if (!GetInputInfo())
         return 0;
+    this->GainBucket = new MaxHeap(this->CellNum, segmentNum);
 
     if (this->inputPartFile != "NO FILE")
         if(!GetPartInfo())
@@ -555,24 +838,23 @@ int fm::Partition()
     WriteHypergraphInfomation();
 
     int i = 0;
-    int cnt = 0;
             
-    // for (int j = 0; j < 1; j ++)
-    {
-        // for (this->ith = 2; this->ith >= 1; this->ith--)
-        {
-            do {
-                ++i;
-                InitPartition();
-                DoPass();
-                this->cutSize -= this->maxOrderGain;
-                //printf("Current  cutsize = %0d\n", cutSize);
-                printf("    - Cut-size after pass #%2d: %0d\n", i, this->cutSize);
-                fprintf(this->outputFile, "    - Cut-size after pass #%2d: %0d\n", i, this->cutSize);
-            } 
-            while (this->maxOrderGain > 0);
-        }
-    }
+    do {
+        ++i;
+        InitPartition();
+
+        // int g1 = Gains.begin()->first;
+        // int g2 = GainBucket->GetMax()->cellGain;
+        // std::cout << g1 << "\t" << g2 << std::endl;
+
+        DoPass();
+        this->cutSize -= this->maxOrderGain;
+        //printf("Current  cutsize = %0d\n", cutSize);
+        printf("    - Cut-size after pass #%3d: %0d\n", i, this->cutSize);
+        fprintf(this->outputFile, "    - Cut-size after pass #%3d: %0d\n", i, this->cutSize);
+    } 
+    // while (this->maxOrderGain > 0);
+    while (i < 10);
 
     WriteResult();
 

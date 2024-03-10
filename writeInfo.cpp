@@ -89,7 +89,7 @@ void fm::WriteHypergraphInfomation()
     printf("*                          Partitioning Result                           *\n");
     printf("**************************************************************************\n");
     printf("Current Cut-size:\n");
-    printf("    - Cut-size after pass #%2d: %0d\n", 0, this->cutSize);
+    printf("    - Cut-size after pass #%3d: %0d\n", 0, this->cutSize);
     
     fprintf(this->outputFile, "Hypergraph Infomation:\n");
     fprintf(this->outputFile, "    - Total Net Number:                 %0d\n", this->NetNum);
@@ -102,7 +102,7 @@ void fm::WriteHypergraphInfomation()
     fprintf(this->outputFile, "*                          Partitioning Result                           *\n");
     fprintf(this->outputFile, "**************************************************************************\n");
     fprintf(this->outputFile, "Current Cut-size:\n");
-    fprintf(this->outputFile, "    - Cut-size after pass #%2d: %0d\n", 0, this->cutSize);
+    fprintf(this->outputFile, "    - Cut-size after pass #%3d: %0d\n", 0, this->cutSize);
 }
 
 

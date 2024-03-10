@@ -1,6 +1,7 @@
 #include <iomanip>
 #include "fm.cpp"
 #include "writeInfo.cpp"
+#include "maxheap.cpp"
 
 
 int main(int argc, char* argv[])
@@ -16,6 +17,7 @@ int main(int argc, char* argv[])
     std::string partFile = "NO FILE";
     int segmentNum = 2;
     double balance_factor = 0.1;
+    int data = 0;
 
     int argIndex = 1;
     while (argIndex < (argc - 1))
@@ -36,6 +38,10 @@ int main(int argc, char* argv[])
         else if (arg_str == "-e")
         {
             balance_factor = std::stod(argv[argIndex++]);
+        }
+        else if (arg_str == "-data")
+        {
+            data = atoi(argv[argIndex++]);
         }
         else if (arg_str == "-w")
         {
@@ -64,7 +70,7 @@ int main(int argc, char* argv[])
     // srand(clock());
     // GenerateInput(500, 500, 5);  // CellNum. NetNum, MaxCellNumInOneNet
     
-    fm* fmExample = new fm(segmentNum, fileName, partFile, balance_factor);
+    fm* fmExample = new fm(segmentNum, fileName, partFile, balance_factor, data);
 
     WriteHead(fmExample);
     WritePartitionParameters(fmExample, segmentNum, balance_factor, partFile, fileName);

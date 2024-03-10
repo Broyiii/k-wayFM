@@ -4,6 +4,10 @@
 #include <map>
 #include <set>
 #include <climits>
+#include <list>
+#include <algorithm>
+
+// #include "maxheap.hpp"
 
 constexpr int FREE        = 0;
 constexpr int LOOSE       = 1;
@@ -87,16 +91,73 @@ struct Net
     int segmentNum = 2;
 
     int* phi;     // num of cells in seg k
+    bool* isLockedPart;
+    bool isLocked;
+
+    // std::vector<std::vector<int>> gain;  // <k,j> cut gain from part k to j
+    int **gain;
     
     std::vector< int > cells;
+    // std::vector< std::list<int> > cells4MoveInParts;
 
     Net(int id, int w, int sn) : ID(id), weight(w), segmentNum(sn) {
         this->phi = new int[segmentNum];
+        this->isLockedPart = new bool[segmentNum];
+        // this->gain.resize(segmentNum);
+        this->gain = new int*[segmentNum];
         for (int seg = 0; seg < segmentNum; seg++)
+        {
             this->phi[seg] = 0;
+            // this->gain[seg].resize(segmentNum, 0);
+            this->gain[seg] = new int[segmentNum];
+        }
     }
     ~Net() {
         delete[] phi;
+    }
+
+    void UpdateLock(int tarSeg)
+    {
+        if (this->isLocked)
+            return;
+
+        this->isLockedPart[tarSeg] = true;
+        for (int k = 0; k < segmentNum; ++k)
+        {
+            if (!this->isLockedPart[k])
+                return;
+        }
+        this->isLocked = true;
+    }
+
+    void UpdateNetGain()
+    {
+        for(int k = 0; k < segmentNum; ++k)
+        {
+            if (this->phi[k] == 0)
+                continue;
+
+            if (this->phi[k] == 1)
+            {
+                for (int j = 0; j < segmentNum; ++j)
+                {
+                    if ((k != j) && (this->phi[j] > 0))
+                    {
+                        this->gain[k][j] += this->weight;
+                    }
+                }
+            }
+            else
+            {
+                for (int j = 0; j < segmentNum; ++j)
+                {
+                    if ((k != j) && (this->phi[j] == 0))
+                    {
+                        this->gain[k][j] -= this->weight;
+                    }
+                }
+            }
+        }
     }
 };
 
@@ -113,11 +174,46 @@ public:
 
 typedef std::map <int, std::set<Gain, gainSortCriterion>, compare> GainMap;  // <gain,cell>
 
+class MaxHeap
+{
+public:
+    MaxHeap(int cellNum, int segNum) : cellNum(cellNum), segNum(segNum) {}
+
+    void Init();
+
+    void Insert(Gain* element);
+
+    Gain* ExtractMax();
+
+    Gain* GetMax();
+
+    void Remove(int vertex_id, int seg);
+
+    void ChangePriority(int vertex_id, int seg, int update_gain);
+
+    int size = 0;
+
+private:
+    int Parent(int element) const { return std::floor((element - 1) / 2); }
+    int LeftChild(int& element) const { return 2 * element + 1; }
+    int RightChild(int& element) const { return 2 * element + 2; }
+    void HeapifyUp(int index);
+    void HeapifyDown(int index);
+    bool CompareElementLargeThan(int index_a, int index_b);
+
+    std::vector<Gain*> nodes_;
+    std::vector<std::vector<int>> vertices_map_;  // store the index of vertices in nodes_ [index][k]
+
+    int cellNum;
+    int segNum;
+};
+
 
 class fm
 {
 public:
-    fm(int segmentNum, std::string fileDir, std::string partDir, double bal_fac) {
+    fm(int segmentNum, std::string fileDir, std::string partDir, double bal_fac, int data) {
+        this->dataStruct = data;
         this->segmentNum = segmentNum;
         this->Segments = new int[segmentNum];
         for (int seg = 0; seg < segmentNum; seg++)
@@ -156,7 +252,7 @@ public:
 
     int Partition();
     void ShowCells();
-    void CaculateCutsize();
+    int CaculateCutsize();
     void WriteHypergraphInfomation();
     void WriteResult();
 
@@ -167,6 +263,8 @@ public:
     int NetNum = 0;
     int originalCutSize = 0;
     int cutSize = 0;
+
+    int dataStruct = 0;
 
     std::string inputFileDir;    // "./work/demo/out.hgr"
     std::string inputPartFile;   // "./input/xxxx.part2"
@@ -182,10 +280,12 @@ private:
     void DoPass();
     bool SatisfyBalance(int targetSeg, int weight);
     void GetBalanceNum();
-    void UpdateGain(int cell, int k, Net* net);
-    void ReverseUpdateGain(int cell, int k, Net* net);
+    void UpdateGain(int cellID, Net* net);
+    void ReverseUpdateGain(int cellID, Net* net);
     void GetGainOrder();
     void MakeMove(int cellID, int targetSeg);
+    void InsertNewGain(Gain &old_gain, Gain &new_gain, int cell);
+    void InitGainBucket();
 
     int* Segments;  // instore weight sum
 
@@ -194,6 +294,7 @@ private:
     std::vector <Gain>     Order;  // instore the order of the exchange of cells
 
     GainMap Gains;
+    MaxHeap *GainBucket;
 
     int ith = 1;
     int maxCellNum = 0;
