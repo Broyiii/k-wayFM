@@ -4,7 +4,7 @@ WD = ./work/demo
 FN = ./work/demo/out.hgr
 
 all: 
-	$(CC) kwayFM.cpp -O3 -o kwayFM
+	$(CC) kwayFM.cpp -pthread -O3 -o kwayFM
 
 ibm1:
 	./kwayFM -h ./work/ispd/ibm01/ibm01.hgr -k 4 -e 0.1

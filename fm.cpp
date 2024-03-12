@@ -349,6 +349,9 @@ void fm::GetGainOrder()
         {
             Gain cell_gain = cell->GetGain();
 
+            // if (cell_gain.cellGain < 0)
+            //     continue;
+
             auto iter = Gains.find(cell_gain.cellGain);
             if (iter == Gains.end())  // hasn't this gain key, create new key
             {
@@ -368,7 +371,11 @@ void fm::GetGainOrder()
 
 void fm::InitGainBucket()
 {
-    this->GainBucket->Init();
+    // this->GainBucket->Init();
+    for (int i = 0; i < segmentNum; ++i)
+    {
+        this->GainBuckets[i]->Init(CellNum);
+    }
     for (auto& cell : Cells)
     {
         int sourceSeg = cell->segment;
@@ -376,8 +383,10 @@ void fm::InitGainBucket()
         {
             if (k != sourceSeg)
             {
-                // Gain* element = new Gain(cell->ID, sourceSeg, k, cell->gain[k]);
-                this->GainBucket->Insert(new Gain(cell->ID, sourceSeg, k, cell->gain[k]));
+                // this->GainBucket->Insert(new Gain(cell->ID, sourceSeg, k, cell->gain[k]));
+                // if (cell->gain[k] < 0)
+                //     continue;
+                this->GainBuckets[k]->Insert(new Gain(cell->ID, sourceSeg, k, cell->gain[k]));
             }
         }
     }
@@ -399,37 +408,14 @@ void fm::InitPartition()
 
     for (auto net : Nets)
     {
-        // net->cells4MoveInParts.clear();
-        // net->cells4MoveInParts.resize(segmentNum);
-        // for (int& cellID : net->cells)
-        // {
-        //     net->cells4MoveInParts[Cells[cellID]->segment].emplace_back(cellID);
-        // }
         net->isLocked = false;
         for (int k = 0; k < segmentNum; ++k)
         {
             net->isLockedPart[k] = false;
-            for (int j = 0; j < segmentNum; ++j)
-                net->gain[k][j] = 0;
         }
-        net->UpdateNetGain();
-        // for (int& cellID : net->cells)
-        // {
-        //     UpdateGain(cellID, net);
-        // }
-    }
-    for (auto cell : Cells)
-    {
-        int k = cell->segment;
-        for (int netID : cell->nets)
+        for (int& cellID : net->cells)
         {
-            for (int j = 0; j < segmentNum; ++j)
-            {
-                if (k != j)
-                {
-                    cell->gain[j] += Nets[netID]->gain[k][j];
-                }
-            }
+            UpdateGain(cellID, net);
         }
     }
     if (dataStruct == 0)
@@ -591,16 +577,19 @@ void fm::MakeMove(int cellID, int targetSeg)
                         {
                             if (Nets[netID]->phi[sourceSeg] == 2)
                             {
-                                GainBucket->ChangePriority(cell, targetSeg, 2);
+                                // GainBucket->ChangePriority(cell, targetSeg, 2);
+                                GainBuckets[targetSeg]->ChangePriority(cell, 2);
                             }
                             else
                             {
-                                GainBucket->ChangePriority(cell, targetSeg, 1);
+                                // GainBucket->ChangePriority(cell, targetSeg, 1);
+                                GainBuckets[targetSeg]->ChangePriority(cell, 1);
                             }
                         }
                         else if (Nets[netID]->phi[sourceSeg] == 2)
                         {
-                            GainBucket->ChangePriority(cell, targetSeg, 1);
+                            // GainBucket->ChangePriority(cell, targetSeg, 1);
+                            GainBuckets[targetSeg]->ChangePriority(cell, 1);
                         }
 
                         if (Nets[netID]->phi[sourceSeg] == 2)
@@ -608,7 +597,8 @@ void fm::MakeMove(int cellID, int targetSeg)
                             for (int k = 0; k < segmentNum; ++k) {
                                 if ((k != cellSeg) && (k != targetSeg))
                                 {
-                                    GainBucket->ChangePriority(cell, k, 1);
+                                    // GainBucket->ChangePriority(cell, k, 1);
+                                    GainBuckets[k]->ChangePriority(cell, 1);
                                 }
                             }
                         }
@@ -618,14 +608,16 @@ void fm::MakeMove(int cellID, int targetSeg)
                     {
                         if (Nets[netID]->phi[sourceSeg] == 1)
                         {
-                            GainBucket->ChangePriority(cell, sourceSeg, -1);
+                            // GainBucket->ChangePriority(cell, sourceSeg, -1);
+                            GainBuckets[sourceSeg]->ChangePriority(cell, -1);
                         }
                         if (Nets[netID]->phi[targetSeg] == 1)
                         {
                             for (int k = 0; k < segmentNum; ++k) {
                                 if (k != cellSeg) 
                                 {
-                                    GainBucket->ChangePriority(cell, k, -1);
+                                    // GainBucket->ChangePriority(cell, k, -1);
+                                    GainBuckets[k]->ChangePriority(cell, -1);
                                 }
                             }
                         }
@@ -635,11 +627,13 @@ void fm::MakeMove(int cellID, int targetSeg)
                     {
                         if (Nets[netID]->phi[sourceSeg] == 1)
                         {
-                            GainBucket->ChangePriority(cell, sourceSeg, -1);
+                            // GainBucket->ChangePriority(cell, sourceSeg, -1);
+                            GainBuckets[sourceSeg]->ChangePriority(cell, -1);
                         }
                         if (Nets[netID]->phi[targetSeg] == 0)
                         {
-                            GainBucket->ChangePriority(cell, targetSeg, 1);
+                            // GainBucket->ChangePriority(cell, targetSeg, 1);
+                            GainBuckets[targetSeg]->ChangePriority(cell, 1);
                         }
                     }
                 }
@@ -725,23 +719,37 @@ void fm::DoPass()
     }
     else
     {
-        while (GainBucket->size != 0)
+        while (1)
         {
-            auto max_gain_ = GainBucket->ExtractMax();
+            // auto max_gain_ = GainBucket->ExtractMax();
+            Gain* max_gain_ = new Gain(-1, -1, -1, INT_MIN);
+            for (int i = 0; i < segmentNum; ++i)
+            {
+                Gain* new_gain_ = GainBuckets[i]->GetMax();
+                if (new_gain_->cellGain > max_gain_->cellGain)
+                    max_gain_ = new_gain_;
+                // new_gain_ = NULL;
+            }
+            if (max_gain_->cellGain == INT_MIN)
+                break;
             if (SatisfyBalance(max_gain_->targetSegment, Cells[max_gain_->cellID]->weight))
             {
                 for (int seg = 0; seg < segmentNum; ++seg)
                 {
-                    if ((seg != max_gain_->sourceSegment) && (seg != max_gain_->targetSegment))
+                    // if ((seg != max_gain_->sourceSegment) && (seg != max_gain_->targetSegment))
+                    if ((seg != max_gain_->sourceSegment))
                     {
-                        GainBucket->Remove(max_gain_->cellID, seg);
+                        // GainBucket->Remove(max_gain_->cellID, seg);
+                        GainBuckets[seg]->Remove(max_gain_->cellID);
                     }
                 }
 
-                // int __cut__ = CaculateCutsize();
                 Order.emplace_back(*max_gain_);
-                // Order.emplace_back(Gain(max_gain_->cellID, max_gain_->sourceSegment, max_gain_->targetSegment, max_gain_->cellGain));
                 MakeMove(max_gain_->cellID, max_gain_->targetSegment);
+            }
+            else
+            {
+                GainBuckets[max_gain_->targetSegment]->Remove(max_gain_->cellID);
             }
         }
     }
@@ -753,32 +761,12 @@ void fm::DoPass()
     for (int i = 0; i < Order.size(); i++)
     {
         orderSum += Order[i].cellGain;
-        if (orderSum > this->maxOrderGain)
+        if (orderSum >= this->maxOrderGain)
         {
             this->maxOrderGain = orderSum;
             maxOrderIndex = i;
         }
     }
-    
-    // // // for debug--------------------------------
-    // int GainsSize = 0;
-    // if (Gains.size() != 0)
-    // {
-    //     for (auto g = Gains.begin(); g != Gains.end(); g++)
-    //     {
-    //         GainsSize += g->second.size();
-    //     }
-    // }
-    // for (int i = 0; i <= 10; i++)
-    // {
-    //     if (Order[i].cellGain != 0)
-    //         std::cout << i << " : " << Order[i].cellID << " : " << Order[i].cellGain << std::endl;
-    // }
-    // std::cout << "size Gains = " << GainsSize << std::endl;
-    // std::cout << "max order gain = " << this->maxOrderGain << std::endl;
-    // std::cout << "maxOrderIndex  = " << maxOrderIndex << std::endl;
-    // std::cout << "size order = " << this->Order.size() << std::endl;
-    // // --------------------------------
 
     for (int i = maxOrderIndex + 1; i < Order.size(); i++)
     {
@@ -793,6 +781,54 @@ void fm::DoPass()
         }
     }
     std::cout << "        pass gain = " << maxOrderGain << std::endl;
+
+
+    // this->maxOrderGain = 0;
+    // int sum_gain_ = 0;
+    // std::vector<Gain> reverseOrderGains;
+    // for (auto &g : Order)
+    // {
+    //     int gain = g.cellGain;
+    //     if (gain >= 0)
+    //     {
+    //         if (sum_gain_ == 0)
+    //         {
+    //             this->maxOrderGain += gain;
+    //         }
+    //         else if (sum_gain_ < 0)
+    //         {
+    //             sum_gain_ += gain;
+    //             if (sum_gain_ >= 0)
+    //             {
+    //                 this->maxOrderGain += sum_gain_;
+    //                 reverseOrderGains.clear();
+    //                 sum_gain_ = 0;
+    //             }
+    //             else
+    //                 reverseOrderGains.emplace_back(g);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         sum_gain_ += gain;
+    //         reverseOrderGains.emplace_back(g);
+    //     }
+    // }
+
+    // for (auto g : reverseOrderGains)
+    // {
+    //     Cells[g.cellID]->segment = g.sourceSegment;
+    //     Segments[g.sourceSegment] += Cells[g.cellID]->weight;
+    //     Segments[g.targetSegment] -= Cells[g.cellID]->weight;
+
+    //     for (int& netID : Cells[g.cellID]->nets)
+    //     {
+    //         ++Nets[netID]->phi[g.sourceSegment];
+    //         --Nets[netID]->phi[g.targetSegment];
+    //     }
+    // }
+
+    // std::cout << "        pass gain = " << this->maxOrderGain << std::endl;
 }
 
 
@@ -826,7 +862,7 @@ int fm::Partition()
 {
     if (!GetInputInfo())
         return 0;
-    this->GainBucket = new MaxHeap(this->CellNum, segmentNum);
+    // this->GainBucket = new MaxHeap(this->CellNum, segmentNum);
 
     if (this->inputPartFile != "NO FILE")
         if(!GetPartInfo())

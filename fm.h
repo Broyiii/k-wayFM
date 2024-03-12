@@ -6,6 +6,7 @@
 #include <climits>
 #include <list>
 #include <algorithm>
+#include <thread>
 
 // #include "maxheap.hpp"
 
@@ -177,9 +178,9 @@ typedef std::map <int, std::set<Gain, gainSortCriterion>, compare> GainMap;  // 
 class MaxHeap
 {
 public:
-    MaxHeap(int cellNum, int segNum) : cellNum(cellNum), segNum(segNum) {}
+    MaxHeap() {}
 
-    void Init();
+    void Init(int cellNum);
 
     void Insert(Gain* element);
 
@@ -187,9 +188,9 @@ public:
 
     Gain* GetMax();
 
-    void Remove(int vertex_id, int seg);
+    void Remove(int vertex_id);
 
-    void ChangePriority(int vertex_id, int seg, int update_gain);
+    void ChangePriority(int vertex_id, int update_gain);
 
     int size = 0;
 
@@ -202,10 +203,11 @@ private:
     bool CompareElementLargeThan(int index_a, int index_b);
 
     std::vector<Gain*> nodes_;
-    std::vector<std::vector<int>> vertices_map_;  // store the index of vertices in nodes_ [index][k]
+    // std::vector<std::vector<int>> vertices_map_;  // store the index of vertices in nodes_ [index][k]
+    std::vector<int> vertices_map_;
 
-    int cellNum;
-    int segNum;
+    // int cellNum;
+    // int segNum;
 };
 
 
@@ -215,9 +217,13 @@ public:
     fm(int segmentNum, std::string fileDir, std::string partDir, double bal_fac, int data) {
         this->dataStruct = data;
         this->segmentNum = segmentNum;
+        this->GainBuckets.resize(segmentNum);
         this->Segments = new int[segmentNum];
         for (int seg = 0; seg < segmentNum; seg++)
+        {
             this->Segments[seg] = 0;
+            this->GainBuckets[seg] = new MaxHeap();
+        }
 
         this->inputFileDir = fileDir;
         this->inputPartFile = partDir;
@@ -294,7 +300,8 @@ private:
     std::vector <Gain>     Order;  // instore the order of the exchange of cells
 
     GainMap Gains;
-    MaxHeap *GainBucket;
+    // MaxHeap *GainBucket;
+    std::vector<MaxHeap*> GainBuckets;
 
     int ith = 1;
     int maxCellNum = 0;

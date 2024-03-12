@@ -10,51 +10,52 @@
 //     }
 // }
 
-void MaxHeap::Init() 
+void MaxHeap::Init(int cellNum) 
 {
     this->nodes_.clear();
     this->vertices_map_.clear();
     this->size = 0; 
-    this->nodes_.resize(cellNum * (segNum - 1), new Gain(0,0,0,INT_MIN));
-    this->vertices_map_.resize(cellNum);
-    for (int i = 0; i < cellNum; ++i)
-    {
-        this->vertices_map_[i].resize(segNum, -1);
-    }       
+    this->nodes_.resize(cellNum);
+    this->vertices_map_.resize(cellNum, -1);
 }
 
 void MaxHeap::Insert(Gain *element) 
 {
     nodes_[this->size] = element;
+    vertices_map_[element->cellID] = this->size;
     ++this->size;
-    vertices_map_[element->cellID][element->targetSegment] = this->size - 1;
     HeapifyUp(this->size - 1);
 }
 
 Gain* MaxHeap::ExtractMax()
 {
+    if (this->size <= 0)
+        return (new Gain(-1, -1, -1, INT_MIN));
     auto max_element = nodes_.front();
     // replace the first element with the last element, then
     // call HeapifyDown to update the order of elements
     nodes_[0] = nodes_[this->size - 1];
-    vertices_map_[nodes_[this->size - 1]->cellID][nodes_[this->size - 1]->targetSegment] = 0;
+    vertices_map_[nodes_[this->size - 1]->cellID] = 0;
     --this->size;
     // nodes_.pop_back();
     HeapifyDown(0);
     // Set location of this vertex to -1 in the map
-    vertices_map_[max_element->cellID][max_element->targetSegment] = -1;
+    vertices_map_[max_element->cellID] = -1;
     return max_element;
 }
 
 Gain* MaxHeap::GetMax()
 {
-    return nodes_.front();
+    if (this->size > 0)
+        return nodes_.front();
+    else
+        return (new Gain(-1, -1, -1, INT_MIN));
 }
 
 // Remove the specifid vertex
-void MaxHeap::Remove(int vertex_id, int seg)
+void MaxHeap::Remove(int vertex_id)
 {
-    const int index = vertices_map_[vertex_id][seg];
+    const int index = vertices_map_[vertex_id];
     if (index == -1) {
         return;  // This vertex does not exists
     }
@@ -67,18 +68,18 @@ void MaxHeap::Remove(int vertex_id, int seg)
     // ExtractMax();
 
     nodes_[index] = nodes_[this->size - 1];
-    vertices_map_[nodes_[this->size - 1]->cellID][nodes_[this->size - 1]->targetSegment] = index;
+    vertices_map_[nodes_[this->size - 1]->cellID] = index;
     --this->size;
     // nodes_.pop_back();
     HeapifyDown(index);
     // Set location of this vertex to -1 in the map
-    vertices_map_[vertex_id][seg] = -1;
+    vertices_map_[vertex_id] = -1;
 }
 
 // Update the priority (gain) for the specified vertex
-void MaxHeap::ChangePriority(int vertex_id, int seg, int update_gain)
+void MaxHeap::ChangePriority(int vertex_id, int update_gain)
 {
-    const int index = vertices_map_[vertex_id][seg];
+    const int index = vertices_map_[vertex_id];
     if (index == -1) {
         return;  // This vertex does not exists
     }
@@ -110,8 +111,8 @@ void MaxHeap::HeapifyUp(int index)
         // Update the map (exchange parent and child)
         auto& parent_heap_element = nodes_[Parent(index)];
         auto& child_heap_element = nodes_[index];
-        vertices_map_[child_heap_element->cellID][child_heap_element->targetSegment] = Parent(index);
-        vertices_map_[parent_heap_element->cellID][parent_heap_element->targetSegment] = index;
+        vertices_map_[child_heap_element->cellID] = Parent(index);
+        vertices_map_[parent_heap_element->cellID] = index;
         // Swap the elements
         std::swap(parent_heap_element, child_heap_element);
         // Next iteration
@@ -146,8 +147,8 @@ void MaxHeap::HeapifyDown(int index)
     auto& cur_heap_element = nodes_[index];
     auto& large_heap_element = nodes_[max_index];
     // Update the map
-    vertices_map_[cur_heap_element->cellID][cur_heap_element->targetSegment] = max_index;
-    vertices_map_[large_heap_element->cellID][large_heap_element->targetSegment] = index;
+    vertices_map_[cur_heap_element->cellID] = max_index;
+    vertices_map_[large_heap_element->cellID] = index;
     // Swap the elements
     std::swap(cur_heap_element, large_heap_element);
     // Next recursive iterationss
